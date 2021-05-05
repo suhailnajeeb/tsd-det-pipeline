@@ -188,7 +188,7 @@ class ClassificationModel(nn.Module):
 class RetinaNet(nn.Module):
     """[summary]"""
 
-    def __init__(self, num_classes, backbone_network, fpn_sizes):
+    def __init__(self, num_classes, backbone_network, fpn_sizes, anchors = None):
         """[summary]
         Args:
             num_classes ([int]): [description]
@@ -210,7 +210,10 @@ class RetinaNet(nn.Module):
         self.regressionModel = RegressionModel(256)
         self.classificationModel = ClassificationModel(256, num_classes=num_classes)
 
-        self.anchors = Anchors()
+        if anchors is None:
+            self.anchors = Anchors()
+        else:
+            self.anchors = anchors
 
         self.regressBoxes = BBoxTransform()
 
