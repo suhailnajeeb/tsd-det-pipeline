@@ -19,6 +19,28 @@ class CocoDataset(Dataset):
 
         self.load_classes()
 
+        self.labels = {}
+        for key, value in self.classes.items():
+            self.labels[value] = key
+    
+    def label_to_name(self, label):
+        """[maps class id to class name]
+
+        Args:
+            label ([int]): [class id]
+
+        Returns:
+            [str]: [class name]
+        """
+        return self.labels[label]
+        
+    def num_classes(self):
+        """total number of classes + background
+        Returns:
+            [int]: [total number of class]
+        """
+        return max(self.classes.values()) + 1
+    
     def load_classes(self):
 
         # load class names (name -> label)
@@ -168,3 +190,4 @@ class Normalizer(object):
         image, annots = sample['img'], sample['annot']
 
         return {'img': ((image.astype(np.float32) - self.mean) / self.std), 'annot': annots}
+
