@@ -12,6 +12,7 @@ import collections
 import os
 from tensorboardX import SummaryWriter
 from tqdm import tqdm
+from coco_eval import evaluate_coco
 #from tqdm.autonotebook import tqdm
 
 
@@ -122,20 +123,22 @@ for epoch_num in range(epochs):
         #del classification_loss
         #del regression_loss
 
-        #if(iter_num == 10):
-        #    print('1 iterations complete, breaking loop ..')
-        #    break
+        if(iter_num == 1000):
+            print('10 iterations complete, breaking loop ..')
+            break
 
         #except Exception as e:
         #    print(e)
         #    #continue
     
+    evaluate_coco(val_set, model)
+    
     # Apparently, the model evaluation is not working
-    model.eval()
-    print('Evaluating Model:')
-    _, MAP = evaluate(val_set, model)
-    print('MAP Score: ',MAP)
+    #model.eval()
+    #print('Evaluating Model:')
+    #_, MAP = evaluate(val_set, model)
+    #print('MAP Score: ',MAP)
     scheduler.step(np.mean(epoch_loss))
 
     # save the model
-    #torch.save(model, os.path.join('weights/', '{}_retinanet_{}_map.pt'.format("EfficientNetb4", epoch_num)))
+    torch.save(model, os.path.join('weights/', '{}_retinanet_{}.pt'.format("EfficientNetb4", epoch_num)))
