@@ -1,5 +1,5 @@
-from retinanet.dataloader import CocoDataset, Normalizer, Augmenter, Resizer, collater
 import torch
+from retinanet.dataloader import CocoDataset, Normalizer, Augmenter, Resizer, collater
 import torch.optim as optim
 from torchvision import transforms
 from torch.utils.data import DataLoader
@@ -9,6 +9,11 @@ from retinanet.anchors import Anchors
 from retinanet.eval import evaluate
 import numpy as np
 import collections
+import os
+from tensorboardX import SummaryWriter
+from tqdm import tqdm
+#from tqdm.autonotebook import tqdm
+
 
 ###################### DataLoader ##################################
 
@@ -39,8 +44,9 @@ val_set = CocoDataset(root_dir=root_dir, set='val',
                                transform=transforms.Compose([Normalizer(mean=mean, std=std),
                                                              Resizer(896)]))
 
-val_generator = DataLoader(val_set, **val_params)
+#val_generator = DataLoader(val_set, **val_params)
 
+#val_generator.num_classes = val_set.num_classes
 
 ####################### Model ########################################
 
@@ -69,14 +75,17 @@ model.to(device)
 
 ########################## Training Loop ###################################
 
+writer = SummaryWriter('logs/')
+
 epochs = 10
 
-optimizer = optim.Adam(model.parameters(), lr=1e-5)
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
 
 model.train()
 loss_hist = collections.deque(maxlen=500)
 
+step = 0
 
 for epoch_num in range(epochs):
     model.train()
@@ -84,7 +93,9 @@ for epoch_num in range(epochs):
 
     epoch_loss = []
 
-    for iter_num, data in enumerate(training_generator):
+    progress_bar = tqdm(training_generator)
+
+    for iter_num, data in enumerate(progress_bar):
         #try:
         optimizer.zero_grad()
         classification_loss, regression_loss = model(
@@ -98,28 +109,33 @@ for epoch_num in range(epochs):
         optimizer.step()
         loss_hist.append(float(loss))
         epoch_loss.append(float(loss))
-        print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | \
-                    Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num,
+        progress_bar.set_description('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num,
                                                                             float(classification_loss), float(regression_loss), np.mean(loss_hist)))
-        del classification_loss
-        del regression_loss
+
+        writer.add_scalars('Classification Loss', {'train': classification_loss}, step)
+        writer.add_scalars('Regression Loss', {'train': regression_loss}, step)
+        writer.add_scalars('Loss', {'train': loss}, step)
+
+        step += 1
+        #progress_bar.update()
+
+        #del classification_loss
+        #del regression_loss
+
+        #if(iter_num == 10):
+        #    print('1 iterations complete, breaking loop ..')
+        #    break
 
         #except Exception as e:
         #    print(e)
         #    #continue
     
-    _, MAP = evaluate(val_generator, model)
+    # Apparently, the model evaluation is not working
+    model.eval()
+    print('Evaluating Model:')
+    _, MAP = evaluate(val_set, model)
+    print('MAP Score: ',MAP)
     scheduler.step(np.mean(epoch_loss))
 
-    # something to save the script
-
-
-'''
-for data in training_generator:
-    #print(data.keys())
-    img = data['img'].to(device).float()
-    annot = data['annot']
-
-    cl, rl = model(img, annot)
-    break
-'''
+    # save the model
+    #torch.save(model, os.path.join('weights/', '{}_retinanet_{}_map.pt'.format("EfficientNetb4", epoch_num)))
