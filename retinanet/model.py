@@ -5,6 +5,22 @@ from retinanet.utils import BBoxTransform, ClipBoxes
 from retinanet import losses
 import math
 
+from torchvision.ops import nms as NMS
+
+def nms(dets, thresh):
+    """[summary]
+
+    Args:
+        dets ([tensor]): [bounding boxes]
+        thresh ([float]): [threshold for nms]
+
+    Returns:
+        [tensor]: [description]
+    """
+    boxes = dets[:, :4]
+    scores = dets[:, -1]
+    return NMS(boxes, scores, thresh)
+
 class PyramidFeatures(nn.Module):
     """[summary]"""
     def __init__(self, C3_size, C4_size, C5_size, feature_size=256):
